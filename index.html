@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>농산물 매입·매출 관리 시스템</title>
+    <!-- CSS 연결 -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- 1. 사이드바 네비게이션 -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <div class="logo-icon">農</div>
+                <div class="logo-text">AgriManager</div>
+            </div>
+
+            <nav class="nav-container">
+                <ul class="nav-menu">
+                    <li class="nav-item active">
+                        <button data-tab="dashboard">
+                            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                            <span>종합 대시보드</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button data-tab="purchases">
+                            <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                            <span>매입 관리 (입고)</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button data-tab="sales">
+                            <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                            <span>매출 관리 (출고)</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button data-tab="inventory">
+                            <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                            <span>실시간 재고 현황</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button data-tab="settings">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                            <span>구글 시트 연동</span>
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="connection-badge disconnected">
+                    <span class="dot"></span>
+                    <span>구글 시트 미연동</span>
+                </div>
+                <button class="theme-toggle-btn" id="btnToggleTheme">
+                    <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                    <span>다크 모드</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- 2. 메인 콘텐츠 뷰포트 -->
+        <main class="main-content">
+            
+            <!-- 공통 헤더 영역 -->
+            <header class="content-header">
+                <div class="page-title">
+                    <h1 id="mainTitle">종합 대시보드</h1>
+                    <p id="mainSubtitle">농산물 거래 동향 및 실시간 매입/매출 통계 현황</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-purchase" id="btnOpenAddPurchase">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        매입(입고) 등록
+                    </button>
+                    <button class="btn btn-sales" id="btnOpenAddSales">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        매출(출고) 등록
+                    </button>
+                </div>
+            </header>
+
+            <!-- ========================================== -->
+            <!-- 탭 1: 종합 대시보드 섹션 -->
+            <!-- ========================================== -->
+            <section id="dashboardSection" class="content-section">
+                <!-- 상단 4대 핵심 요약 지표 -->
+                <div class="summary-grid">
+                    <div class="summary-card purchases">
+                        <div class="card-header">
+                            <span class="card-title">총 매입 금액</span>
+                            <div class="card-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                            </div>
+                        </div>
+                        <div class="card-value" id="statTotalPurchases">₩0</div>
+                        <div class="card-trend" id="dashboardTrendPur">미지급금: ₩0</div>
+                    </div>
+                    
+                    <div class="summary-card sales">
+                        <div class="card-header">
+                            <span class="card-title">총 매출 금액</span>
+                            <div class="card-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                            </div>
+                        </div>
+                        <div class="card-value" id="statTotalSales">₩0</div>
+                        <div class="card-trend" id="dashboardTrendSal">미수금: ₩0</div>
+                    </div>
+
+                    <div class="summary-card profit">
+                        <div class="card-header">
+                            <span class="card-title">당기 순이익</span>
+                            <div class="card-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                            </div>
+                        </div>
+                        <div class="card-value" id="statNetProfit">₩0</div>
+                        <div class="card-trend" id="dashboardTrendProfit">마진율: 0%</div>
+                    </div>
+
+                    <div class="summary-card count">
+                        <div class="card-header">
+                            <span class="card-title">당월 거래량</span>
+                            <div class="card-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            </div>
+                        </div>
+                        <div class="card-value" id="statTransactionCount">0 건</div>
+                        <div class="card-trend" id="dashboardTrendCount">금월 매입: 0건 | 매출: 0건</div>
+                    </div>
+                </div>
+
+                <!-- 차트 레이아웃 그리드 -->
+                <div class="charts-grid">
+                    <!-- 6개월 동향 차트 -->
+                    <div class="chart-card">
+                        <h3>월별 매입/매출 동향 
+                            <span class="legend-item" style="font-size: 0.75rem; font-weight: normal;">
+                                <span class="legend-color" style="background-color: var(--color-purchase)"></span> 매입 
+                                <span class="legend-color" style="background-color: var(--color-sales); margin-left: 0.5rem;"></span> 매출
+                            </span>
+                        </h3>
+                        <div class="chart-container" id="trendChartContainer">
+                            <!-- JS에 의해 dynamic SVG 차트 삽입 -->
+                        </div>
+                    </div>
+
+                    <!-- 품목별 비중 도넛 차트 -->
+                    <div class="chart-card">
+                        <h3>품목별 매출 비중</h3>
+                        <div class="chart-container" id="donutChartContainer">
+                            <!-- JS에 의해 dynamic SVG 도넛 차트 삽입 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 하단 최근 거래 목록 -->
+                <div class="section-card">
+                    <h3 style="margin-bottom: 1rem; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        최근 매입·매출 기록 (최근 5건)
+                    </h3>
+                    <div class="table-container">
+                        <table class="responsive-table">
+                            <thead>
+                                <tr>
+                                    <th>날짜</th>
+                                    <th>구분</th>
+                                    <th>품목명</th>
+                                    <th>거래처</th>
+                                    <th style="text-align: right;">수량</th>
+                                    <th style="text-align: right;">총 금액</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentTransactionsList">
+                                <!-- JS 렌더링 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- 탭 2: 매입 관리 섹션 -->
+            <!-- ========================================== -->
+            <section id="purchasesSection" class="content-section" style="display: none;">
+                <div class="section-card">
+                    <!-- 필터 행 -->
+                    <div class="table-header-row">
+                        <div class="search-box">
+                            <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" id="purchaseSearch" placeholder="품목명, 매입처, 메모 검색...">
+                        </div>
+                        <div class="filter-group">
+                            <select id="filterPurchaseStatus" class="filter-select">
+                                <option value="">전체 결제상태</option>
+                                <option value="지불완료">지불완료</option>
+                                <option value="미지급">미지급</option>
+                            </select>
+                            <span id="purchaseCountText" style="font-size: 0.85rem; font-weight:600; color:var(--text-secondary);">총 0건</span>
+                        </div>
+                    </div>
+
+                    <!-- 테이블 -->
+                    <div class="table-container">
+                        <table class="responsive-table">
+                            <thead>
+                                <tr>
+                                    <th>날짜</th>
+                                    <th>품목명</th>
+                                    <th>매입처</th>
+                                    <th style="text-align: right;">수량</th>
+                                    <th style="text-align: right;">단가</th>
+                                    <th style="text-align: right;">총금액</th>
+                                    <th>결제상태</th>
+                                    <th>비고</th>
+                                    <th>관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="purchaseList">
+                                <!-- JS 렌더링 -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 페이징 컨트롤 -->
+                    <div class="pagination">
+                        <span id="purchasePageInfo">1 / 1 페이지</span>
+                        <div class="page-controls">
+                            <button class="page-btn" id="btnPrevPurchasePage" disabled>이전</button>
+                            <button class="page-btn" id="btnNextPurchasePage" disabled>다음</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- 탭 3: 매출 관리 섹션 -->
+            <!-- ========================================== -->
+            <section id="salesSection" class="content-section" style="display: none;">
+                <div class="section-card">
+                    <!-- 필터 행 -->
+                    <div class="table-header-row">
+                        <div class="search-box">
+                            <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" id="salesSearch" placeholder="품목명, 매출처, 메모 검색...">
+                        </div>
+                        <div class="filter-group">
+                            <select id="filterSalesStatus" class="filter-select">
+                                <option value="">전체 수금상태</option>
+                                <option value="수금완료">수금완료</option>
+                                <option value="미수금">미수금</option>
+                            </select>
+                            <span id="salesCountText" style="font-size: 0.85rem; font-weight:600; color:var(--text-secondary);">총 0건</span>
+                        </div>
+                    </div>
+
+                    <!-- 테이블 -->
+                    <div class="table-container">
+                        <table class="responsive-table">
+                            <thead>
+                                <tr>
+                                    <th>날짜</th>
+                                    <th>품목명</th>
+                                    <th>매출처</th>
+                                    <th style="text-align: right;">수량</th>
+                                    <th style="text-align: right;">단가</th>
+                                    <th style="text-align: right;">총금액</th>
+                                    <th>수금상태</th>
+                                    <th>비고</th>
+                                    <th>관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="salesList">
+                                <!-- JS 렌더링 -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 페이징 컨트롤 -->
+                    <div class="pagination">
+                        <span id="salesPageInfo">1 / 1 페이지</span>
+                        <div class="page-controls">
+                            <button class="page-btn" id="btnPrevSalesPage" disabled>이전</button>
+                            <button class="page-btn" id="btnNextSalesPage" disabled>다음</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- 탭 4: 실시간 재고 현황 섹션 -->
+            <!-- ========================================== -->
+            <section id="inventorySection" class="content-section" style="display: none;">
+                <div class="section-card" style="margin-bottom: 1.5rem;">
+                    <h3 style="margin-bottom: 1.25rem; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+                        품목별 수불 대장 요약
+                    </h3>
+                    <div class="table-container">
+                        <table class="responsive-table">
+                            <thead>
+                                <tr>
+                                    <th>품목명</th>
+                                    <th style="text-align: right;">총 입고량(매입)</th>
+                                    <th style="text-align: right;">총 출고량(매출)</th>
+                                    <th style="text-align: right;">현재고량</th>
+                                    <th style="text-align: right;">평균매입단가</th>
+                                    <th style="text-align: right;">재고평가액</th>
+                                    <th>상태</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventoryList">
+                                <!-- JS 렌더링 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 재고 카드 그리드 시각화 -->
+                <div class="stock-grid" id="inventoryCardGrid">
+                    <!-- JS 카드로 렌더링 -->
+                </div>
+            </section>
+
+            <!-- ========================================== -->
+            <!-- 탭 5: 구글 시트 연동 설정 섹션 -->
+            <!-- ========================================== -->
+            <section id="settingsSection" class="content-section" style="display: none;">
+                <div class="section-card">
+                    <div class="settings-layout">
+                        <!-- 연동 설정 패널 -->
+                        <div class="settings-group">
+                            <h3 style="font-size: 1.2rem; font-weight:700; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                                구글 스프레드시트 연동
+                            </h3>
+                            <p style="font-size:0.85rem; color:var(--text-secondary); line-height: 1.5;">
+                                구글 시트를 클라우드 데이터베이스로 사용합니다. Apps Script 웹 앱을 배포하고 부여받은 URL을 아래 입력해 주세요. 연동 전에는 웹 브라우저 로컬 저장소(LocalStorage)를 사용하여 단독 구동됩니다.
+                            </p>
+
+                            <div style="margin-top: 1rem;">
+                                <label class="settings-label" for="sheetsUrlInput">Google Apps Script 웹 앱 URL</label>
+                                <input type="text" id="sheetsUrlInput" class="settings-input" placeholder="https://script.google.com/macros/s/.../exec">
+                            </div>
+
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-primary" id="btnSaveSheetsUrl" style="flex-grow: 1;">연동 URL 저장</button>
+                            </div>
+
+                            <hr style="border:0; border-top: 1px solid var(--border-color); margin: 1rem 0;">
+
+                            <h4 style="font-size: 0.95rem; font-weight:700; margin-bottom: 0.5rem; color: var(--text-primary);">수동 데이터 동기화 관리</h4>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
+                                <button class="btn btn-secondary" id="btnImportSheets" style="justify-content: center; gap: 0.5rem;">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2v-4"></path><polyline points="17 9 12 14 7 9"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                    시트 데이터 가져오기
+                                </button>
+                                <button class="btn btn-secondary" id="btnExportSheets" style="justify-content: center; gap: 0.5rem;">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                    시트로 데이터 내보내기
+                                </button>
+                            </div>
+                            <div style="background-color: var(--color-danger-light); color: var(--color-danger); padding:0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight:500; line-height: 1.4;">
+                                ⚠️ 주의: 동기화(가져오기/내보내기) 실행 시 대상 스토리지(로컬 브라우저 또는 구글 시트)의 기존 데이터가 완전히 덮어쓰기됩니다. 실행 전 신중히 확인해 주세요.
+                            </div>
+                        </div>
+
+                        <!-- 설정 안내서 -->
+                        <div class="guide-box">
+                            <h4>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                                처음이신가요? 3분 연동 방법
+                            </h4>
+                            <ol class="guide-list">
+                                <li>새 <strong>구글 스프레드시트</strong>를 만듭니다.</li>
+                                <li>시트 상단 메뉴에서 <strong>[확장 프로그램] → [Apps Script]</strong>를 선택합니다.</li>
+                                <li>원래 있던 코드를 지우고 아래의 코드를 복사하여 붙여넣습니다.
+                                    <div class="code-block" id="appsScriptCode">/**
+ * 농산물 매입/매출 관리 시스템 - Apps Script
+ */
+function createJsonResponse(data) {
+  return ContentService.createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doGet(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    checkAndInitSheets(ss);
+    var pSheet = ss.getSheetByName("매입");
+    var sSheet = ss.getSheetByName("매출");
+    return createJsonResponse({
+      success: true,
+      purchases: readSheetData(pSheet),
+      sales: readSheetData(sSheet)
+    });
+  } catch (err) {
+    return createJsonResponse({ success: false, error: err.toString() });
+  }
+}
+
+function doPost(e) {
+  try {
+    var postData = JSON.parse(e.postData.type === "application/json" ? e.postData.contents : e.postData.getDataAsString());
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    checkAndInitSheets(ss);
+    if (postData.action === "sync") {
+      writeSheetData(ss.getSheetByName("매입"), postData.purchases);
+      writeSheetData(ss.getSheetByName("매출"), postData.sales);
+      return createJsonResponse({ success: true, message: "구글 시트 동기화가 성공적으로 완료되었습니다." });
+    }
+    return createJsonResponse({ success: false, error: "Invalid Action" });
+  } catch (err) {
+    return createJsonResponse({ success: false, error: err.toString() });
+  }
+}
+
+function checkAndInitSheets(ss) {
+  var pSheet = ss.getSheetByName("매입");
+  if (!pSheet) {
+    pSheet = ss.insertSheet("매입");
+    pSheet.appendRow(["id", "날짜", "품목명", "매입처", "수량", "단가", "총금액", "결제상태", "비고"]);
+    pSheet.getRange("A1:I1").setFontWeight("bold").setBackground("#e6f4ea").setHorizontalAlignment("center");
+  }
+  var sSheet = ss.getSheetByName("매출");
+  if (!sSheet) {
+    sSheet = ss.insertSheet("매출");
+    sSheet.appendRow(["id", "날짜", "품목명", "매출처", "수량", "단가", "총금액", "수금상태", "비고"]);
+    sSheet.getRange("A1:I1").setFontWeight("bold").setBackground("#fce8e6").setHorizontalAlignment("center");
+  }
+}
+
+function readSheetData(sheet) {
+  var data = [];
+  var rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return data;
+  var headers = rows[0];
+  var keyMapping = {
+    "id": "id", "날짜": "date", "품목명": "product", "매입처": "supplier",
+    "매출처": "customer", "수량": "quantity", "단가": "unitPrice",
+    "총금액": "totalPrice", "결제상태": "status", "수금상태": "status", "비고": "notes"
+  };
+  for (var i = 1; i < rows.length; i++) {
+    var row = rows[i];
+    var obj = {};
+    var hasData = false;
+    for (var j = 0; j < headers.length; j++) {
+      var headerVal = headers[j];
+      var key = keyMapping[headerVal] || headerVal;
+      var cellVal = row[j];
+      if (cellVal instanceof Date) {
+        cellVal = Utilities.formatDate(cellVal, Session.getScriptTimeZone(), "yyyy-MM-dd");
+      }
+      obj[key] = cellVal;
+      if (cellVal !== "") hasData = true;
+    }
+    if (hasData) {
+      if (obj.quantity) obj.quantity = Number(obj.quantity);
+      if (obj.unitPrice) obj.unitPrice = Number(obj.unitPrice);
+      if (obj.totalPrice) obj.totalPrice = Number(obj.totalPrice);
+      data.push(obj);
+    }
+  }
+  return data;
+}
+
+function writeSheetData(sheet, dataList) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    sheet.deleteRows(2, lastRow - 1);
+  }
+  if (!dataList || dataList.length === 0) return;
+  var rows = [];
+  for (var i = 0; i < dataList.length; i++) {
+    var item = dataList[i];
+    var row = [];
+    row.push(item.id || "");
+    row.push(item.date || "");
+    row.push(item.product || "");
+    row.push(item.supplier || item.customer || "");
+    row.push(item.quantity || 0);
+    row.push(item.unitPrice || 0);
+    row.push(item.totalPrice || (item.quantity * item.unitPrice) || 0);
+    row.push(item.status || "");
+    row.push(item.notes || "");
+    rows.push(row);
+  }
+  sheet.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
+}</div>
+                                    <button class="code-copy-btn" id="btnCopyScriptCode">복사하기</button>
+                                </li>
+                                <li>프로젝트 저장 후, 우측 상단 <strong>[배포] → [새 배포]</strong>를 클릭합니다.</li>
+                                <li>배포 유형은 <strong>웹 앱</strong>으로 지정하고, 다음과 같이 설정합니다.
+                                    <ul>
+                                        <li>웹 앱을 실행할 사용자: <strong>나 (본인 이메일)</strong></li>
+                                        <li>액세스 권한이 있는 사용자: <strong>모든 사용자</strong></li>
+                                    </ul>
+                                </li>
+                                <li>배포 완료 시 표시되는 <strong>웹 앱 URL</strong>을 복사하여 왼쪽 설정창에 저장합니다.</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 팝업 모달: 매입 등록 및 수정 -->
+    <!-- ========================================== -->
+    <div class="modal-overlay" id="purchaseModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="purchaseModalTitle">매입 등록</h3>
+                <button class="modal-close-btn" id="btnClosePurchaseModal">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <form id="purchaseForm">
+                <input type="hidden" id="purId">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="purDate">날짜 *</label>
+                            <input type="date" id="purDate" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="purProduct">품목명 *</label>
+                            <select id="purProduct" class="form-control" required>
+                                <option value="">선택하세요</option>
+                                <!-- JS 동적 옵션 생성 -->
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="purSupplier">매입처 *</label>
+                        <input type="text" id="purSupplier" class="form-control" placeholder="예: 해남 영농법인" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="purQuantity">수량 *</label>
+                            <input type="number" id="purQuantity" class="form-control" min="1" placeholder="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="purUnitPrice">단가 (원) *</label>
+                            <input type="number" id="purUnitPrice" class="form-control" min="1" placeholder="0" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="purTotalPrice">총 금액 (세액 포함)</label>
+                        <input type="text" id="purTotalPrice" class="form-control form-control-calculated" readonly value="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="purStatus">결제 상태 *</label>
+                        <select id="purStatus" class="form-control" required>
+                            <option value="지불완료">지불완료</option>
+                            <option value="미지급">미지급</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="purNotes">비고 (메모)</label>
+                        <textarea id="purNotes" class="form-control" rows="2" placeholder="품질 상태, 포장 단위 등 메모..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModals()">취소</button>
+                    <button type="submit" class="btn btn-primary">저장하기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 팝업 모달: 매출 등록 및 수정 -->
+    <!-- ========================================== -->
+    <div class="modal-overlay" id="salesModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="salesModalTitle">매출 등록</h3>
+                <button class="modal-close-btn" id="btnCloseSalesModal">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <form id="salesForm">
+                <input type="hidden" id="salId">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="salDate">날짜 *</label>
+                            <input type="date" id="salDate" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="salProduct">품목명 *</label>
+                            <select id="salProduct" class="form-control" required>
+                                <option value="">선택하세요</option>
+                                <!-- JS 동적 옵션 생성 -->
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="salCustomer">매출처 (거래처) *</label>
+                        <input type="text" id="salCustomer" class="form-control" placeholder="예: 서울가락청과" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="salQuantity">수량 *</label>
+                            <input type="number" id="salQuantity" class="form-control" min="1" placeholder="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="salUnitPrice">단가 (원) *</label>
+                            <input type="number" id="salUnitPrice" class="form-control" min="1" placeholder="0" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="salTotalPrice">총 금액 (세액 포함)</label>
+                        <input type="text" id="salTotalPrice" class="form-control form-control-calculated" readonly value="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="salStatus">수금 상태 *</label>
+                        <select id="salStatus" class="form-control" required>
+                            <option value="수금완료">수금완료</option>
+                            <option value="미수금">미수금</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="salNotes">비고 (메모)</label>
+                        <textarea id="salNotes" class="form-control" rows="2" placeholder="배송 송장, 결제 조건 등 메모..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModals()">취소</button>
+                    <button type="submit" class="btn btn-primary">저장하기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 로딩 스피너 및 알림 컴포넌트 -->
+    <div class="spinner-overlay" id="spinnerOverlay">
+        <div class="spinner"></div>
+    </div>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- 스크립트 연결 -->
+    <script src="sheets.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
