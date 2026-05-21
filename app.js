@@ -6,7 +6,7 @@
 const AppState = {
     purchases: [],
     sales: [],
-    products: ["매실", "양상추", "당근", "양파", "마늘", "대파", "배추", "무"],
+    products: ["매실", "양상추", "배", "수출배", "밤", "대봉감", "배추", "무"],
     
     // 테이블 페이징 상태
     purchasePage: 1,
@@ -27,24 +27,24 @@ const AppState = {
 // ==========================================================================
 const MOCK_PURCHASES = [
     { id: "pur_1", date: "2026-03-10", product: "매실", supplier: "광양 매실농가", quantity: 200, unitPrice: 3000, totalPrice: 600000, status: "지불완료", notes: "청매실 상급" },
-    { id: "pur_2", date: "2026-03-15", product: "양파", supplier: "무안 햇살농장", quantity: 300, unitPrice: 1500, totalPrice: 450000, status: "지불완료", notes: "망 포장" },
+    { id: "pur_2", date: "2026-03-15", product: "수출배", supplier: "무안 햇살농장", quantity: 300, unitPrice: 1500, totalPrice: 450000, status: "지불완료", notes: "망 포장" },
     { id: "pur_3", date: "2026-04-02", product: "양상추", supplier: "남해 양상추농가", quantity: 150, unitPrice: 1800, totalPrice: 270000, status: "지불완료", notes: "신선도 우수" },
-    { id: "pur_4", date: "2026-04-12", product: "당근", supplier: "제주 구좌농협", quantity: 100, unitPrice: 2500, totalPrice: 250000, status: "미지급", notes: "잔금 이월 예정" },
-    { id: "pur_5", date: "2026-04-20", product: "마늘", supplier: "의성 마늘작목반", quantity: 80, unitPrice: 8000, totalPrice: 640000, status: "지불완료", notes: "건조 상태 양호" },
+    { id: "pur_4", date: "2026-04-12", product: "배", supplier: "제주 구좌농협", quantity: 100, unitPrice: 2500, totalPrice: 250000, status: "미지급", notes: "잔금 이월 예정" },
+    { id: "pur_5", date: "2026-04-20", product: "밤", supplier: "의성 마늘작목반", quantity: 80, unitPrice: 8000, totalPrice: 640000, status: "지불완료", notes: "건조 상태 양호" },
     { id: "pur_6", date: "2026-05-02", product: "매실", supplier: "광양 매실농가", quantity: 250, unitPrice: 3200, totalPrice: 800000, status: "지불완료", notes: "추가 발주분" },
-    { id: "pur_7", date: "2026-05-10", product: "대파", supplier: "진도 대파유통", quantity: 150, unitPrice: 1800, totalPrice: 270000, status: "지불완료", notes: "단 묶음 포장" },
-    { id: "pur_8", date: "2026-05-15", product: "양파", supplier: "무안 햇살농장", quantity: 400, unitPrice: 1600, totalPrice: 640000, status: "미지급", notes: "신용 매입" }
+    { id: "pur_7", date: "2026-05-10", product: "대봉감", supplier: "진도 대파유통", quantity: 150, unitPrice: 1800, totalPrice: 270000, status: "지불완료", notes: "단 묶음 포장" },
+    { id: "pur_8", date: "2026-05-15", product: "수출배", supplier: "무안 햇살농장", quantity: 400, unitPrice: 1600, totalPrice: 640000, status: "미지급", notes: "신용 매입" }
 ];
 
 const MOCK_SALES = [
     { id: "sal_1", date: "2026-03-12", product: "매실", customer: "서울 가락상회", quantity: 120, unitPrice: 4800, totalPrice: 576000, status: "수금완료", notes: "화물 발송" },
-    { id: "sal_2", date: "2026-03-18", product: "양파", customer: "인천 대형식자재", quantity: 200, unitPrice: 2500, totalPrice: 500000, status: "수금완료", notes: "정기 납품" },
+    { id: "sal_2", date: "2026-03-18", product: "수출배", customer: "인천 대형식자재", quantity: 200, unitPrice: 2500, totalPrice: 500000, status: "수금완료", notes: "정기 납품" },
     { id: "sal_3", date: "2026-04-05", product: "양상추", customer: "경기 로컬푸드", quantity: 100, unitPrice: 2800, totalPrice: 280000, status: "수금완료", notes: "신선 박스 납품" },
-    { id: "sal_4", date: "2026-04-18", product: "당근", customer: "서울 가락상회", quantity: 70, unitPrice: 4000, totalPrice: 280000, status: "미수금", notes: "말일 일괄 결제 약속" },
-    { id: "sal_5", date: "2026-04-25", product: "마늘", customer: "부산 농산물도매", quantity: 50, unitPrice: 12000, totalPrice: 600000, status: "수금완료", notes: "망 마늘" },
+    { id: "sal_4", date: "2026-04-18", product: "배", customer: "서울 가락상회", quantity: 70, unitPrice: 4000, totalPrice: 280000, status: "미수금", notes: "말일 일괄 결제 약속" },
+    { id: "sal_5", date: "2026-04-25", product: "밤", customer: "부산 농산물도매", quantity: 50, unitPrice: 12000, totalPrice: 600000, status: "수금완료", notes: "망 마늘" },
     { id: "sal_6", date: "2026-05-05", product: "매실", customer: "인천 대형식자재", quantity: 100, unitPrice: 4900, totalPrice: 490000, status: "수금완료", notes: "단가 인상분 반영" },
-    { id: "sal_7", date: "2026-05-12", product: "대파", customer: "경기 로컬푸드", quantity: 120, unitPrice: 2800, totalPrice: 336000, status: "수금완료", notes: "대파 벌크 납품" },
-    { id: "sal_8", date: "2026-05-18", product: "양파", customer: "서울 가락상회", quantity: 200, unitPrice: 2600, totalPrice: 520000, status: "미수금", notes: "추가 미결제 잔액" }
+    { id: "sal_7", date: "2026-05-12", product: "대봉감", customer: "경기 로컬푸드", quantity: 120, unitPrice: 2800, totalPrice: 336000, status: "수금완료", notes: "대파 벌크 납품" },
+    { id: "sal_8", date: "2026-05-18", product: "수출배", customer: "서울 가락상회", quantity: 200, unitPrice: 2600, totalPrice: 520000, status: "미수금", notes: "추가 미결제 잔액" }
 ];
 
 // ==========================================================================
