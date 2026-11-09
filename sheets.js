@@ -1,104 +1,140 @@
 /**
- * 구글 스프레드시트 연동 서비스 모듈 (sheets.js)
+ * 구글 스프레드시트 자동 동기화 모듈 (sheets.js)
+ *
+ * - 저장/수정/삭제할 때마다 해당 1건만 구글 시트에 즉시 반영 (upsert/delete)
+ * - 앱을 열 때, 다시 화면에 돌아올 때, 1분마다 시트에서 최신 데이터를 가져옴
+ * - 인터넷이 끊겨도 "전송 대기열"에 보관했다가 연결되면 자동 전송
  */
 
 const SheetsService = {
-  // 로컬 스토리지 키 정의
+  // ★ 여기에 Apps Script 웹 앱 URL을 넣어두면 휴대폰·PC 어디서 열어도 자동 연동됩니다.
+  //   예) "https://script.google.com/macros/s/AKfycb..../exec"
+  DEFAULT_API_URL: "",
+
   URL_STORAGE_KEY: "agri_sheets_api_url",
+  QUEUE_KEY: "agri_sync_queue",
 
-  // 저장된 Google Apps Script 웹앱 URL 가져오기
   getApiUrl() {
-    return localStorage.getItem(this.URL_STORAGE_KEY) || "";
+    return localStorage.getItem(this.URL_STORAGE_KEY) || this.DEFAULT_API_URL || "";
   },
 
-  // 웹앱 URL 저장하기
   setApiUrl(url) {
-    if (url) {
-      localStorage.setItem(this.URL_STORAGE_KEY, url.trim());
-    } else {
-      localStorage.removeItem(this.URL_STORAGE_KEY);
-    }
+    if (url) localStorage.setItem(this.URL_STORAGE_KEY, url.trim());
+    else localStorage.removeItem(this.URL_STORAGE_KEY);
   },
 
-  // 연동 설정이 완료되었는지 확인
   isConnected() {
-    const url = this.getApiUrl();
-    return url.startsWith("https://script.google.com/macros/s/");
+    return this.getApiUrl().startsWith("https://script.google.com/macros/s/");
   },
 
-  // 구글 시트에서 데이터 가져오기 (GET)
+  // 주소창에 ?api=웹앱URL 을 붙여 열면 해당 기기에 자동 저장 (휴대폰 설정용)
+  applyUrlFromQuery() {
+    const params = new URLSearchParams(location.search);
+    const api = params.get("api");
+    if (api && api.startsWith("https://script.google.com/macros/s/")) {
+      this.setApiUrl(api);
+      params.delete("api");
+      const qs = params.toString();
+      history.replaceState(null, "", location.pathname + (qs ? "?" + qs : "") + location.hash);
+      return true;
+    }
+    return false;
+  },
+
+  // ---------- 서버 통신 ----------
   async fetchData() {
-    const url = this.getApiUrl();
-    if (!this.isConnected()) {
-      throw new Error("구글 스프레드시트 웹 앱 URL이 올바르게 설정되지 않았습니다.");
-    }
-
-    try {
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Accept": "application/json"
-        },
-        mode: "cors"
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP 에러! 상태코드: ${response.status}`);
-      }
-
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || "구글 시트로부터 데이터를 가져오는 중 오류가 발생했습니다.");
-      }
-
-      return {
-        purchases: result.purchases || [],
-        sales: result.sales || []
-      };
-    } catch (error) {
-      console.error("SheetsService.fetchData 오류:", error);
-      throw new Error(`구글 시트 연동 실패: ${error.message}. URL이 정확한지 또는 웹앱 권한 설정이 '모든 사용자'로 되어 있는지 확인해주세요.`);
-    }
+    if (!this.isConnected()) throw new Error("구글 시트 웹 앱 URL이 설정되지 않았습니다.");
+    const res = await fetch(this.getApiUrl() + "?t=" + Date.now(), { method: "GET", redirect: "follow" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error || "구글 시트 읽기 실패");
+    return { purchases: result.purchases || [], sales: result.sales || [] };
   },
 
-  // 구글 시트로 로컬 데이터 내보내기 (POST)
+  async post(payload) {
+    if (!this.isConnected()) throw new Error("구글 시트 웹 앱 URL이 설정되지 않았습니다.");
+    const res = await fetch(this.getApiUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" }, // CORS 사전요청 회피
+      body: JSON.stringify(payload),
+      redirect: "follow"
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error || "구글 시트 저장 실패");
+    return result;
+  },
+
+  // 전체 덮어쓰기 (설정 탭의 "내보내기" 버튼용)
   async syncData(purchases, sales) {
-    const url = this.getApiUrl();
-    if (!this.isConnected()) {
-      throw new Error("구글 스프레드시트 웹 앱 URL이 올바르게 설정되지 않았습니다.");
-    }
+    const r = await this.post({ action: "sync", purchases, sales });
+    this.clearQueue();
+    return r.message || "동기화 완료";
+  },
 
-    const payload = {
-      action: "sync",
-      purchases: purchases,
-      sales: sales
-    };
+  // ---------- 전송 대기열 ----------
+  getQueue() {
+    try { return JSON.parse(localStorage.getItem(this.QUEUE_KEY)) || []; } catch { return []; }
+  },
+  setQueue(q) {
+    localStorage.setItem(this.QUEUE_KEY, JSON.stringify(q));
+  },
+  clearQueue() {
+    localStorage.removeItem(this.QUEUE_KEY);
+  },
+  pendingCount() {
+    return this.getQueue().length;
+  },
 
-    try {
-      // POST 요청 전송
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8" // Apps Script POST 처리 시 CORS 문제 완화를 위해 text/plain 권장
-        },
-        body: JSON.stringify(payload),
-        mode: "cors"
-      });
+  // type: "purchases" | "sales"
+  queueUpsert(type, record) {
+    // 같은 레코드에 대한 이전 대기 작업은 제거 (최신 것만 전송)
+    const q = this.getQueue().filter(op => !(op.type === type && (op.record?.id || op.id) === record.id));
+    q.push({ action: "upsert", type, record });
+    this.setQueue(q);
+  },
+  queueDelete(type, id) {
+    const q = this.getQueue().filter(op => !(op.type === type && (op.record?.id || op.id) === id));
+    q.push({ action: "delete", type, id });
+    this.setQueue(q);
+  },
 
-      if (!response.ok) {
-        throw new Error(`HTTP 에러! 상태코드: ${response.status}`);
+  _flushing: null,
+  // 대기열 전송. 성공 시 true
+  async flush() {
+    if (!this.isConnected()) return false;
+    if (this._flushing) return this._flushing;
+    this._flushing = (async () => {
+      const q = this.getQueue();
+      if (!q.length) return true;
+      try {
+        await this.post({ action: "batch", ops: q });
+        // 전송 중에 새로 쌓인 작업은 남겨둠
+        const sent = new Set(q.map(op => JSON.stringify(op)));
+        this.setQueue(this.getQueue().filter(op => !sent.has(JSON.stringify(op))));
+        return true;
+      } catch (e) {
+        console.warn("대기열 전송 실패 (나중에 재시도):", e);
+        return false;
       }
+    })();
+    try { return await this._flushing; } finally { this._flushing = null; }
+  },
 
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || "구글 시트에 데이터를 저장하는 중 오류가 발생했습니다.");
+  // 대기열에 아직 남은 변경을 시트 데이터 위에 덮어씌움 (전송 전 데이터가 사라지지 않도록)
+  mergePending(data) {
+    const result = { purchases: [...data.purchases], sales: [...data.sales] };
+    for (const op of this.getQueue()) {
+      const list = result[op.type];
+      if (!list) continue;
+      if (op.action === "upsert") {
+        const i = list.findIndex(r => String(r.id) === String(op.record.id));
+        if (i >= 0) list[i] = op.record; else list.unshift(op.record);
+      } else if (op.action === "delete") {
+        result[op.type] = list.filter(r => String(r.id) !== String(op.id));
       }
-
-      return result.message || "동기화가 성공했습니다.";
-    } catch (error) {
-      console.error("SheetsService.syncData 오류:", error);
-      throw new Error(`구글 시트 전송 실패: ${error.message}. URL 및 배포 권한 설정을 확인하세요.`);
     }
+    return result;
   }
 };
 

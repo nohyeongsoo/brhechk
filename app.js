@@ -956,6 +956,7 @@ function handlePurchaseSubmit(e) {
         const idx = AppState.purchases.findIndex(p => p.id === id);
         if (idx !== -1) {
             AppState.purchases[idx] = { id, date, product, supplier, quantity, unitPrice, totalPrice, status, notes };
+            SheetsService.queueUpsert("purchases", AppState.purchases[idx]);
             showToast("매입 내역이 수정되었습니다.", "success");
         }
     } else {
@@ -965,10 +966,12 @@ function handlePurchaseSubmit(e) {
             date, product, supplier, quantity, unitPrice, totalPrice, status, notes
         };
         AppState.purchases.unshift(newRecord);
+        SheetsService.queueUpsert("purchases", newRecord);
         showToast("새로운 매입 내역이 등록되었습니다.", "success");
     }
 
     saveDataToLocalStorage();
+    scheduleSync();
     updateProductList();
     closeModals();
     refreshAllUI();
@@ -979,7 +982,9 @@ function deletePurchaseRecord(id) {
     if (!confirm("해당 매입 거래 내역을 정말로 삭제하시겠습니까?")) return;
 
     AppState.purchases = AppState.purchases.filter(p => p.id !== id);
+    SheetsService.queueDelete("purchases", id);
     saveDataToLocalStorage();
+    scheduleSync();
     updateProductList();
     refreshAllUI();
     showToast("매입 내역이 삭제되었습니다.", "success");
@@ -1054,6 +1059,7 @@ function handleSalesSubmit(e) {
         const idx = AppState.sales.findIndex(s => s.id === id);
         if (idx !== -1) {
             AppState.sales[idx] = { id, date, product, customer, quantity, unitPrice, totalPrice, status, notes };
+            SheetsService.queueUpsert("sales", AppState.sales[idx]);
             showToast("매출 내역이 수정되었습니다.", "success");
         }
     } else {
@@ -1062,10 +1068,12 @@ function handleSalesSubmit(e) {
             date, product, customer, quantity, unitPrice, totalPrice, status, notes
         };
         AppState.sales.unshift(newRecord);
+        SheetsService.queueUpsert("sales", newRecord);
         showToast("새로운 매출 내역이 등록되었습니다.", "success");
     }
 
     saveDataToLocalStorage();
+    scheduleSync();
     updateProductList();
     closeModals();
     refreshAllUI();
@@ -1076,7 +1084,9 @@ function deleteSalesRecord(id) {
     if (!confirm("해당 매출 거래 내역을 정말로 삭제하시겠습니까?")) return;
 
     AppState.sales = AppState.sales.filter(s => s.id !== id);
+    SheetsService.queueDelete("sales", id);
     saveDataToLocalStorage();
+    scheduleSync();
     updateProductList();
     refreshAllUI();
     showToast("매출 내역이 삭제되었습니다.", "success");
@@ -1096,10 +1106,19 @@ function updateConnectionBadge() {
     const badges = document.querySelectorAll(".connection-badge");
     const isConnected = SheetsService.isConnected();
     
+    const pending = SheetsService.pendingCount();
     badges.forEach(badge => {
         if (isConnected) {
-            badge.className = "connection-badge connected";
-            badge.innerHTML = `<span class="dot"></span><span>구글 시트 연동됨</span>`;
+            let label = "구글 시트 연동됨";
+            if (SyncState.syncing) label = "동기화 중…";
+            else if (SyncState.error) label = `오프라인 · 대기 ${pending}건`;
+            else if (pending > 0) label = `전송 대기 ${pending}건`;
+            else if (SyncState.lastSync) label = `동기화됨 · ${SyncState.lastSync.toTimeString().slice(0, 5)}`;
+            badge.className = "connection-badge " + (SyncState.error ? "disconnected" : "connected");
+            badge.innerHTML = `<span class="dot"></span><span>${label}</span>`;
+            badge.title = "눌러서 지금 동기화";
+            badge.style.cursor = "pointer";
+            badge.onclick = () => pullFromSheets({ silent: false });
         } else {
             badge.className = "connection-badge disconnected";
             badge.innerHTML = `<span class="dot"></span><span>구글 시트 미연동</span>`;
@@ -1130,8 +1149,10 @@ function saveSheetsUrlSetting() {
     }
 
     SheetsService.setApiUrl(url);
+    localStorage.removeItem("agri_synced_once");
     updateConnectionBadge();
-    showToast("구글 스프레드시트 웹 앱 URL이 저장되었습니다.", "success");
+    showToast("구글 스프레드시트 웹 앱 URL이 저장되었습니다. 동기화를 시작합니다.", "success");
+    pullFromSheets({ silent: false });
 }
 
 // 구글 시트로부터 데이터 불러오기 (가져오기)
@@ -1174,12 +1195,105 @@ async function exportToGoogleSheets() {
     toggleSpinner(true);
     try {
         const msg = await SheetsService.syncData(AppState.purchases, AppState.sales);
+        localStorage.setItem("agri_synced_once", "1");
+        SyncState.lastSync = new Date();
+        SyncState.error = null;
+        updateConnectionBadge();
         showToast(msg, "success");
     } catch (error) {
         showToast(error.message, "error");
     } finally {
         toggleSpinner(false);
     }
+}
+
+// ---------- 자동 동기화 ----------
+const SyncState = { syncing: false, lastSync: null, error: null, timer: null };
+
+// 저장 직후 호출: 잠깐 모았다가 전송
+function scheduleSync() {
+    updateConnectionBadge();
+    if (!SheetsService.isConnected()) return;
+    clearTimeout(SyncState.timer);
+    SyncState.timer = setTimeout(async () => {
+        const ok = await SheetsService.flush();
+        SyncState.error = ok ? null : "전송 실패";
+        if (ok) SyncState.lastSync = new Date();
+        updateConnectionBadge();
+    }, 500);
+}
+
+function isModalOpen() {
+    return !!document.querySelector(".modal-overlay.active");
+}
+
+// 시트에서 최신 데이터 가져오기 (대기열을 먼저 전송한 뒤)
+async function pullFromSheets({ silent = true } = {}) {
+    if (!SheetsService.isConnected() || SyncState.syncing) return;
+    if (silent && isModalOpen()) return; // 입력 중에는 화면을 바꾸지 않음
+    SyncState.syncing = true;
+    updateConnectionBadge();
+    try {
+        await SheetsService.flush();
+        let data = await SheetsService.fetchData();
+        data = SheetsService.mergePending(data);
+
+        // 최초 연동 보호: 시트가 비어 있는데 이 기기에 데이터가 있으면 덮어쓰지 않고 올릴지 물어봄
+        const sheetEmpty = data.purchases.length === 0 && data.sales.length === 0;
+        const localHas = AppState.purchases.length + AppState.sales.length > 0;
+        if (sheetEmpty && localHas && !localStorage.getItem("agri_synced_once")) {
+            SyncState.syncing = false;
+            if (confirm(`구글 시트가 비어 있습니다.\n이 기기의 데이터(매입 ${AppState.purchases.length}건, 매출 ${AppState.sales.length}건)를 시트로 올릴까요?\n\n[취소]를 누르면 이 기기 데이터를 비우고 시트와 맞춥니다.`)) {
+                await SheetsService.syncData(AppState.purchases, AppState.sales);
+                localStorage.setItem("agri_synced_once", "1");
+                SyncState.lastSync = new Date();
+                SyncState.error = null;
+                showToast("이 기기의 데이터를 구글 시트에 올렸습니다.", "success");
+                return;
+            }
+        }
+
+        const changed = JSON.stringify(data.purchases) !== JSON.stringify(AppState.purchases) ||
+                        JSON.stringify(data.sales) !== JSON.stringify(AppState.sales);
+        AppState.purchases = data.purchases;
+        AppState.sales = data.sales;
+        saveDataToLocalStorage();
+        localStorage.setItem("agri_synced_once", "1");
+        if (changed) {
+            updateProductList();
+            refreshAllUI();
+        }
+        SyncState.lastSync = new Date();
+        SyncState.error = null;
+        if (!silent) showToast(`동기화 완료 (매입 ${data.purchases.length}건, 매출 ${data.sales.length}건)`, "success");
+    } catch (error) {
+        console.warn("동기화 실패:", error);
+        SyncState.error = error.message;
+        if (!silent) showToast("동기화 실패: 인터넷 연결 또는 웹 앱 URL을 확인하세요.", "error");
+    } finally {
+        SyncState.syncing = false;
+        updateConnectionBadge();
+    }
+}
+
+function initAutoSync() {
+    if (SheetsService.applyUrlFromQuery()) {
+        showToast("이 기기에 구글 시트 연동 URL이 저장되었습니다.", "success");
+    }
+    updateConnectionBadge();
+    if (!SheetsService.isConnected()) return;
+
+    pullFromSheets({ silent: true });
+    // 휴대폰에서 앱으로 다시 돌아왔을 때
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") pullFromSheets({ silent: true });
+    });
+    // 인터넷이 다시 연결되었을 때
+    window.addEventListener("online", () => pullFromSheets({ silent: true }));
+    // 1분마다 다른 기기의 변경 사항 확인
+    setInterval(() => {
+        if (document.visibilityState === "visible") pullFromSheets({ silent: true });
+    }, 60000);
 }
 
 // ==========================================================================
@@ -1348,6 +1462,7 @@ document.addEventListener("DOMContentLoaded", () => {
     loadData();
     setupEventListeners();
     refreshAllUI();
+    initAutoSync();
 });
 
 // 전역 유틸리티/핸들러 윈도우 노출 (인라인 버튼 이벤트 연결 목적)
